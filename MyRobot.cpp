@@ -95,6 +95,8 @@ class RobotDemo : public SimpleRobot
 	Compressor *compressor;
 	DoubleSolenoid *shifter;
 	DoubleSolenoid *lifter;
+	Counter *leftWheelCounter;
+	Counter *rightWheelCounter;
 	PIDController812 *pid_controller_2;
 	
 	
@@ -114,6 +116,8 @@ public:
 		compressor = new Compressor(1,1); // Digital I/O 1, relay 1
 		shifter = new DoubleSolenoid(1,2);
 		lifter = new DoubleSolenoid(3,4);
+		leftWheelCounter = new Counter(3); // Digital I/O 3
+		rightWheelCounter = new Counter(2); // Digital I/O 2
 		pid_controller_2 = new PIDController812;
 
 		myRobot = new RobotDrive(Motor1, Motor2, Motor3, Motor4);
@@ -131,21 +135,22 @@ public:
 	 */
 	void Autonomous(void)
 	{
-		float max_speed = 0.5;
+		float max_speed = 0.45;
 		float min_speed = 0.10;
-		float up_delta_speed = 0.03;
+		float up_delta_speed = 0.06;
 		float down_delta_speed = 0.04;
-		float delay = 0.4;
+		float delay = 0.7;
 		float duration = 0.0;
 		
 		compressor->Start();
 		myRobot->SetSafetyEnabled(false);
 		for( float v = min_speed; v <= max_speed; v=v+up_delta_speed) {
 			fprintf(stderr,"%f: ramp up %f\n",duration, v);
-			myRobot->Drive(v, 0.0);
+			myRobot->Drive(-v, -0.2);
 			Wait(delay);
 			duration = duration + delay;
 		}
+		/*
 		for( float v = max_speed; v >= min_speed; v=v-down_delta_speed) {
 			fprintf(stderr,"%f: ramp down %f\n",duration, v);
 			myRobot->Drive(v, 0.0);
@@ -159,9 +164,10 @@ public:
 		shifter->Set(DoubleSolenoid::kForward);
 		Motor5->SetSpeed(windingWinchSpeed);
 		Wait (2.0);
+		*/
 		Motor5->SetSpeed(0.0);
 		
-		//	myRobot.Drive(0.0, 0.0); 	// stop robot
+		myRobot->Drive(0.0, 0.0); 	// stop robot
 	}
 	/**
 	 * Runs the motors with arcade steering. 
@@ -171,8 +177,25 @@ public:
 		DriverStationEnhancedIO &controllerBox =
 							DriverStation::GetInstance()->GetEnhancedIO();
 		//compressor->Start();
+		leftWheelCounter->Start();
+		leftWheelCounter->Reset();
+		rightWheelCounter->Start();
+		rightWheelCounter->Reset();
 		while (IsOperatorControl())
 		{
+			fprintf(stderr, "leftWheelCounter=%d, rightWheelCounter=%d\n", 
+					leftWheelCounter->Get(), 
+					rightWheelCounter->Get());
+			
+			if(leftWheelCounter->GetStopped()) {
+				fprintf(stderr, "leftWheelCounter is stopped\n");
+			} else {
+				fprintf(stderr, "leftWheelCounter is moving\n");
+			}
+			if(rightStick.GetRawButton(5)) {
+				leftWheelCounter->Reset();
+				rightWheelCounter->Reset();
+			}
 			if(controllerBox.GetDigital(5)) {
 				controllerBox.SetDigitalOutput(10,1);
 				compressor->Stop();
@@ -202,11 +225,11 @@ public:
 				shifter->Set(DoubleSolenoid::kReverse);
 			}
 			if(leftStick.GetRawButton(3)) {
-				fprintf(stderr,"left stick raw button 1 found\n");
+				//fprintf(stderr,"left stick raw button 1 found\n");
 				lifter->Set(DoubleSolenoid::kForward);
 			}
 			if(leftStick.GetRawButton(1)) {
-				fprintf(stderr,"left stick raw button 3 found\n");
+				//fprintf(stderr,"left stick raw button 3 found\n");
 				lifter->Set(DoubleSolenoid::kReverse);
 			}
 			if(controllerBox.GetDigital(7)) {
@@ -215,7 +238,7 @@ public:
 				controllerBox.SetDigitalOutput(11,0);
 			}
 			if(controllerBox.GetDigital(3)) {
-				fprintf(stderr,"GetDigital(3) is true\n");
+				//fprintf(stderr,"GetDigital(3) is true\n");
 				controllerBox.SetDigitalOutput(9,1);
 				if(controllerBox.GetDigital(7)) {
 					Motor5->SetSpeed(unWindingWinchSpeed);
@@ -228,19 +251,19 @@ public:
 			}
 			// left 1&&2 are true
 			if(controllerBox.GetDigital(1)&&controllerBox.GetDigital(2)) {
-				fprintf(stderr,"GetDigital(1) is true: brush reverse\n");
+				//fprintf(stderr,"GetDigital(1) is true: brush reverse\n");
 				brushMotorRelay1->Set(Relay::kForward);
 				brushMotorRelay2->Set(Relay::kReverse);
 			}
 			// center 1 is true, 2 is false
 			if(controllerBox.GetDigital(1) && !controllerBox.GetDigital(2)) {
-				fprintf(stderr,"GetDigital(1) && ! GetDigital(2) is true: brush off\n");
+				//fprintf(stderr,"GetDigital(1) && ! GetDigital(2) is true: brush off\n");
 				brushMotorRelay1->Set(Relay::kOff);
 				brushMotorRelay2->Set(Relay::kOff);
 			}
 			// right 1 is false, 2 is false
 			if(!(controllerBox.GetDigital(1) || controllerBox.GetDigital(2))){
-				fprintf(stderr, "GetDigital(1) || GetDigital(2) both false: brush forward\n ");
+				//fprintf(stderr, "GetDigital(1) || GetDigital(2) both false: brush forward\n ");
 				brushMotorRelay1->Set(Relay::kReverse);
 				brushMotorRelay2->Set(Relay::kForward);
 			}
