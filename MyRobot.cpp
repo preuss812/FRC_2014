@@ -107,14 +107,15 @@ public:
 		Motor3 = new Jaguar(3); // right rear
 		Motor4 = new Jaguar(4); // right front
 		Motor5 = new Jaguar(5); // winch motor
-		brushMotorRelay1 = new Relay(2);
-		brushMotorRelay2 = new Relay(3);
+		brushMotorRelay1 = new Relay(2); // left side
+		brushMotorRelay2 = new Relay(3); // right side
 		compressor = new Compressor(1,1); // Digital I/O 1, relay 1
 		shifter = new DoubleSolenoid(1,2);
 		lifter = new DoubleSolenoid(3,4);
 		pid_controller_2 = new PIDController812;
 
 		myRobot = new RobotDrive(Motor1, Motor2, Motor3, Motor4);
+
 /*		myRobot->SetInvertedMotor(RobotDrive::kFrontLeftMotor, true);
 		myRobot->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
 		myRobot->SetInvertedMotor(RobotDrive::kFrontRightMotor, true);
@@ -154,7 +155,7 @@ public:
 		shifter->Set(DoubleSolenoid::kReverse);
 		Wait (2.0);
 		shifter->Set(DoubleSolenoid::kForward);
-		Motor5->SetSpeed(0.25);
+		Motor5->SetSpeed(-0.25);
 		Wait (2.0);
 		Motor5->SetSpeed(0.0);
 		
@@ -202,7 +203,7 @@ public:
 			if(controllerBox.GetDigital(3)) {
 				fprintf(stderr,"GetDigital(3) is true\n");
 				controllerBox.SetDigitalOutput(9,1);
-				Motor5->SetSpeed(0.25);
+				Motor5->SetSpeed(-0.25);
 			} else {
 				controllerBox.SetDigitalOutput(9,0);
 				Motor5->SetSpeed(0.0);
@@ -210,7 +211,7 @@ public:
 			// left 1&&2 are true
 			if(controllerBox.GetDigital(1)&&controllerBox.GetDigital(2)) {
 				fprintf(stderr,"GetDigital(1) is true: brush reverse\n");
-				brushMotorRelay1->Set(Relay::kReverse);
+				brushMotorRelay1->Set(Relay::kForward);
 				brushMotorRelay2->Set(Relay::kReverse);
 			}
 			// center 1 is true, 2 is false
@@ -222,7 +223,7 @@ public:
 			// right 1 is false, 2 is false
 			if(!(controllerBox.GetDigital(1) || controllerBox.GetDigital(2))){
 				fprintf(stderr, "GetDigital(1) || GetDigital(2) both false: brush forward\n ");
-				brushMotorRelay1->Set(Relay::kForward);
+				brushMotorRelay1->Set(Relay::kReverse);
 				brushMotorRelay2->Set(Relay::kForward);
 			}
 			Wait(0.005);				// wait for a motor update time
