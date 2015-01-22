@@ -5,6 +5,8 @@
 #define KP 5/10
 #define KI 0
 #define KD 0
+#define windingWinchSpeed -0.40
+#define unWindingWinchSpeed  0.15
 
 class PIDController812
 {
@@ -155,7 +157,7 @@ public:
 		shifter->Set(DoubleSolenoid::kReverse);
 		Wait (2.0);
 		shifter->Set(DoubleSolenoid::kForward);
-		Motor5->SetSpeed(-0.25);
+		Motor5->SetSpeed(windingWinchSpeed);
 		Wait (2.0);
 		Motor5->SetSpeed(0.0);
 		
@@ -168,14 +170,21 @@ public:
 	{
 		DriverStationEnhancedIO &controllerBox =
 							DriverStation::GetInstance()->GetEnhancedIO();
-		compressor->Start();
+		//compressor->Start();
 		while (IsOperatorControl())
 		{
+			if(controllerBox.GetDigital(5)) {
+				controllerBox.SetDigitalOutput(10,1);
+				compressor->Stop();
+			} else {
+				controllerBox.SetDigitalOutput(10,0);
+				compressor->Start();
+			}
 			if(controllerBox.GetDigital(4)) {
 		//		myRobot->TankDrive(leftStick,rightStick,true);
 				myRobot->TankDrive(PwmLimit(Linearize( leftStick.GetY())),
 								   PwmLimit(Linearize(rightStick.GetY())) ); 
-				controllerBox.SetDigitalOutput(10,1);
+	//			controllerBox.SetDigitalOutput(10,1);
 			} else {
 				fprintf(stderr,"x: %f, x': %f, y: %f, y': %f\n",
 						rightStick.GetX(), PwmLimit(Linearize(rightStick.GetX())),
@@ -184,7 +193,7 @@ public:
 			//	myRobot->ArcadeDrive(rightStick,false);
 				myRobot->ArcadeDrive(PwmLimit(Linearize(rightStick.GetY())),
 									 PwmLimit(Linearize(rightStick.GetX())) );
-				controllerBox.SetDigitalOutput(10,0);
+		//		controllerBox.SetDigitalOutput(10,0);
 			}
 			if(rightStick.GetRawButton(3)) {
 				shifter->Set(DoubleSolenoid::kForward);
@@ -200,10 +209,19 @@ public:
 				fprintf(stderr,"left stick raw button 3 found\n");
 				lifter->Set(DoubleSolenoid::kReverse);
 			}
+			if(controllerBox.GetDigital(7)) {
+				controllerBox.SetDigitalOutput(11,1);
+			} else {
+				controllerBox.SetDigitalOutput(11,0);
+			}
 			if(controllerBox.GetDigital(3)) {
 				fprintf(stderr,"GetDigital(3) is true\n");
 				controllerBox.SetDigitalOutput(9,1);
-				Motor5->SetSpeed(-0.25);
+				if(controllerBox.GetDigital(7)) {
+					Motor5->SetSpeed(unWindingWinchSpeed);
+				} else {
+					Motor5->SetSpeed(windingWinchSpeed);
+				}
 			} else {
 				controllerBox.SetDigitalOutput(9,0);
 				Motor5->SetSpeed(0.0);
