@@ -5,8 +5,6 @@
 #define KP 5/10
 #define KI 0
 #define KD 0
-#define windingWinchSpeed -0.40
-#define unWindingWinchSpeed  0.15
 
 class PIDController812
 {
@@ -95,8 +93,6 @@ class RobotDemo : public SimpleRobot
 	Compressor *compressor;
 	DoubleSolenoid *shifter;
 	DoubleSolenoid *lifter;
-	Counter *leftWheelCounter;
-	Counter *rightWheelCounter;
 	PIDController812 *pid_controller_2;
 	
 	
@@ -111,17 +107,14 @@ public:
 		Motor3 = new Jaguar(3); // right rear
 		Motor4 = new Jaguar(4); // right front
 		Motor5 = new Jaguar(5); // winch motor
-		brushMotorRelay1 = new Relay(2); // left side
-		brushMotorRelay2 = new Relay(3); // right side
+		brushMotorRelay1 = new Relay(2);
+		brushMotorRelay2 = new Relay(3);
 		compressor = new Compressor(1,1); // Digital I/O 1, relay 1
 		shifter = new DoubleSolenoid(1,2);
 		lifter = new DoubleSolenoid(3,4);
-		leftWheelCounter = new Counter(3); // Digital I/O 3
-		rightWheelCounter = new Counter(2); // Digital I/O 2
 		pid_controller_2 = new PIDController812;
 
 		myRobot = new RobotDrive(Motor1, Motor2, Motor3, Motor4);
-
 /*		myRobot->SetInvertedMotor(RobotDrive::kFrontLeftMotor, true);
 		myRobot->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
 		myRobot->SetInvertedMotor(RobotDrive::kFrontRightMotor, true);
@@ -135,22 +128,21 @@ public:
 	 */
 	void Autonomous(void)
 	{
-		float max_speed = 0.45;
+		float max_speed = 0.5;
 		float min_speed = 0.10;
-		float up_delta_speed = 0.06;
+		float up_delta_speed = 0.03;
 		float down_delta_speed = 0.04;
-		float delay = 0.7;
+		float delay = 0.4;
 		float duration = 0.0;
 		
 		compressor->Start();
 		myRobot->SetSafetyEnabled(false);
 		for( float v = min_speed; v <= max_speed; v=v+up_delta_speed) {
 			fprintf(stderr,"%f: ramp up %f\n",duration, v);
-			myRobot->Drive(-v, -0.2);
+			myRobot->Drive(v, 0.0);
 			Wait(delay);
 			duration = duration + delay;
 		}
-		/*
 		for( float v = max_speed; v >= min_speed; v=v-down_delta_speed) {
 			fprintf(stderr,"%f: ramp down %f\n",duration, v);
 			myRobot->Drive(v, 0.0);
@@ -162,12 +154,11 @@ public:
 		shifter->Set(DoubleSolenoid::kReverse);
 		Wait (2.0);
 		shifter->Set(DoubleSolenoid::kForward);
-		Motor5->SetSpeed(windingWinchSpeed);
+		Motor5->SetSpeed(0.25);
 		Wait (2.0);
-		*/
 		Motor5->SetSpeed(0.0);
 		
-		myRobot->Drive(0.0, 0.0); 	// stop robot
+		//	myRobot.Drive(0.0, 0.0); 	// stop robot
 	}
 	/**
 	 * Runs the motors with arcade steering. 
@@ -176,38 +167,14 @@ public:
 	{
 		DriverStationEnhancedIO &controllerBox =
 							DriverStation::GetInstance()->GetEnhancedIO();
-		//compressor->Start();
-		leftWheelCounter->Start();
-		leftWheelCounter->Reset();
-		rightWheelCounter->Start();
-		rightWheelCounter->Reset();
+		compressor->Start();
 		while (IsOperatorControl())
 		{
-			fprintf(stderr, "leftWheelCounter=%d, rightWheelCounter=%d\n", 
-					leftWheelCounter->Get(), 
-					rightWheelCounter->Get());
-			
-			if(leftWheelCounter->GetStopped()) {
-				fprintf(stderr, "leftWheelCounter is stopped\n");
-			} else {
-				fprintf(stderr, "leftWheelCounter is moving\n");
-			}
-			if(rightStick.GetRawButton(5)) {
-				leftWheelCounter->Reset();
-				rightWheelCounter->Reset();
-			}
-			if(controllerBox.GetDigital(5)) {
-				controllerBox.SetDigitalOutput(10,1);
-				compressor->Stop();
-			} else {
-				controllerBox.SetDigitalOutput(10,0);
-				compressor->Start();
-			}
 			if(controllerBox.GetDigital(4)) {
 		//		myRobot->TankDrive(leftStick,rightStick,true);
 				myRobot->TankDrive(PwmLimit(Linearize( leftStick.GetY())),
 								   PwmLimit(Linearize(rightStick.GetY())) ); 
-	//			controllerBox.SetDigitalOutput(10,1);
+				controllerBox.SetDigitalOutput(10,1);
 			} else {
 				fprintf(stderr,"x: %f, x': %f, y: %f, y': %f\n",
 						rightStick.GetX(), PwmLimit(Linearize(rightStick.GetX())),
@@ -216,7 +183,7 @@ public:
 			//	myRobot->ArcadeDrive(rightStick,false);
 				myRobot->ArcadeDrive(PwmLimit(Linearize(rightStick.GetY())),
 									 PwmLimit(Linearize(rightStick.GetX())) );
-		//		controllerBox.SetDigitalOutput(10,0);
+				controllerBox.SetDigitalOutput(10,0);
 			}
 			if(rightStick.GetRawButton(3)) {
 				shifter->Set(DoubleSolenoid::kForward);
@@ -225,46 +192,37 @@ public:
 				shifter->Set(DoubleSolenoid::kReverse);
 			}
 			if(leftStick.GetRawButton(3)) {
-				//fprintf(stderr,"left stick raw button 1 found\n");
+				fprintf(stderr,"left stick raw button 1 found\n");
 				lifter->Set(DoubleSolenoid::kForward);
 			}
 			if(leftStick.GetRawButton(1)) {
-				//fprintf(stderr,"left stick raw button 3 found\n");
+				fprintf(stderr,"left stick raw button 3 found\n");
 				lifter->Set(DoubleSolenoid::kReverse);
 			}
-			if(controllerBox.GetDigital(7)) {
-				controllerBox.SetDigitalOutput(11,1);
-			} else {
-				controllerBox.SetDigitalOutput(11,0);
-			}
 			if(controllerBox.GetDigital(3)) {
-				//fprintf(stderr,"GetDigital(3) is true\n");
+				fprintf(stderr,"GetDigital(3) is true\n");
 				controllerBox.SetDigitalOutput(9,1);
-				if(controllerBox.GetDigital(7)) {
-					Motor5->SetSpeed(unWindingWinchSpeed);
-				} else {
-					Motor5->SetSpeed(windingWinchSpeed);
-				}
+				Motor5->SetSpeed(0.25);
 			} else {
 				controllerBox.SetDigitalOutput(9,0);
 				Motor5->SetSpeed(0.0);
 			}
 			// left 1&&2 are true
 			if(controllerBox.GetDigital(1)&&controllerBox.GetDigital(2)) {
-				//fprintf(stderr,"GetDigital(1) is true: brush reverse\n");
-				brushMotorRelay1->Set(Relay::kForward);
+				fprintf(stderr,"GetDigital(1) is true: brush reverse\n");
+				brushMotorRelay1->Set(Relay::kReverse);
 				brushMotorRelay2->Set(Relay::kReverse);
 			}
 			// center 1 is true, 2 is false
 			if(controllerBox.GetDigital(1) && !controllerBox.GetDigital(2)) {
-				//fprintf(stderr,"GetDigital(1) && ! GetDigital(2) is true: brush off\n");
+				fprintf(stderr,"GetDigital(1) && ! GetDigital(2) is true: brush off\n");
 				brushMotorRelay1->Set(Relay::kOff);
 				brushMotorRelay2->Set(Relay::kOff);
 			}
 			// right 1 is false, 2 is false
 			if(!(controllerBox.GetDigital(1) || controllerBox.GetDigital(2))){
-				//fprintf(stderr, "GetDigital(1) || GetDigital(2) both false: brush forward\n ");
-				brushMotorRelay1->Set(Relay::kReverse);
+				fprintf(stderr, "GetDigital(1) || GetDigital(2) both false: brush forward\n ");
+				brushMotorRelay1->Set(Relay::kForward);
 				brushMotorRelay2->Set(Relay::kForward);
 			}
 			Wait(0.005);				// wait for a motor update time
